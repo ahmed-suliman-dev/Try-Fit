@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أزياء أحمد</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        /* ================= الألوان ================= */
+        :root {
+            --bg: #0d0e16;
+            --panel: #141623;
+            --card: #1b1e2e;
+            --card-hover: #222639;
+            --line: rgba(255, 255, 255, 0.08);
+            --text: #eef0f7;
+            --muted: #9096ad;
+            --accent: #ff6b6b;
+            --accent-2: #ffb35c;
+            --accent-soft: rgba(255, 107, 107, 0.14);
+            --overlay: rgba(20, 22, 35, 0.72);
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            --radius: 16px;
+        }
+
+        body.light {
+            --bg: #eef0f6;
+            --panel: #ffffff;
+            --card: #f4f5fa;
+            --card-hover: #eceef6;
+            --line: rgba(20, 22, 40, 0.09);
+            --text: #1a1c2b;
+            --muted: #6b7088;
+            --accent-soft: rgba(255, 107, 107, 0.12);
+            --overlay: rgba(255, 255, 255, 0.8);
+            --shadow: 0 10px 30px rgba(30, 35, 60, 0.12);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        button { font-family: inherit; color: inherit; }
+
+        /* ================= التخطيط ================= */
+        .app {
+            display: grid;
+            grid-template-columns: 380px 1fr;   /* RTL: اللوحة يمين */
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* ================= منطقة العرض ================= */
+        #viewport {
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle at 50% 35%, #2a2d45, #0c0d16 75%);
+            transition: background 0.5s;
+            touch-action: none;
+        }
+
+        #viewport canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+        #viewport canvas:active { cursor: grabbing; }
+
+        .toolbar {
+            position: absolute;
+            display: flex;
+            gap: 6px;
+            padding: 6px;
+            background: var(--overlay);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            z-index: 5;
+        }
+
+        .toolbar.top { top: 16px; left: 16px; }
+        .toolbar.views { bottom: 16px; left: 50%; transform: translateX(-50%); }
+        .toolbar.zoom { left: 16px; top: 50%; transform: translateY(-50%); flex-direction: column; }
+        .tool.big { width: 46px; height: 46px; padding: 0; font-size: 26px; font-weight: 800; line-height: 1; }
+
+        .step-btn {
+            width: 34px;
+            height: 34px;
+            flex: none;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1;
+            transition: all 0.15s;
+        }
+
+        .step-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .step-btn:active { transform: scale(0.92); }
+
+        .tool {
+            border: none;
+            background: transparent;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .tool:hover { background: var(--accent-soft); }
+        .tool.active { background: var(--accent); color: #fff; }
+        .tool.icon { width: 38px; padding: 8px 0; font-size: 16px; }
+
+        .hint {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.55);
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        /* ================= شاشة التحميل ================= */
+        #loader {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            color: #fff;
+            z-index: 10;
+            transition: opacity 0.5s;
+        }
+
+        #loader.hidden { opacity: 0; pointer-events: none; }
+
+        .spinner {
+            width: 46px;
+            height: 46px;
+            border: 4px solid rgba(255, 255, 255, 0.15);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .progress {
+            width: 180px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .progress div {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            transition: width 0.2s;
+        }
+
+        #loader .err { max-width: 340px; text-align: center; font-size: 14px; line-height: 1.8; }
+        #loader .err b { color: var(--accent-2); }
+
+        /* ================= اللوحة الجانبية ================= */
+        #panel {
+            background: var(--panel);
+            border-left: 1px solid var(--line);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            z-index: 6;
+            transition: background 0.3s;
+        }
+
+        .brand {
+            padding: 20px 22px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            line-height: 1.3;
+        }
+
+        .brand p { font-size: 12px; color: var(--muted); }
+
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            margin: 0 16px;
+            padding: 4px;
+            background: var(--card);
+            border-radius: 14px;
+        }
+
+        .tab {
+            border: none;
+            background: transparent;
+            padding: 8px 4px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            transition: all 0.2s;
+        }
+
+        .tab span { font-size: 18px; }
+        .tab.active { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+
+        .pages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            min-height: 0;
+        }
+
+        .pages::-webkit-scrollbar { width: 6px; }
+        .pages::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
+
+        .page { display: none; animation: fade 0.25s ease; }
+        .page.active { display: block; }
+
+        @keyframes fade { from { opacity: 0; transform: translateY(6px); } }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title small { font-size: 11px; color: var(--muted); font-weight: 400; }
+
+        .label { font-size: 12px; color: var(--muted); margin: 14px 0 8px; }
+
+        /* شرائح الاختيار */
+        .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .chip {
+            flex: 1;
+            min-width: 70px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            padding: 9px 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .chip:hover { border-color: var(--accent); }
+        .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* الألوان */
+        .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .swatch {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px solid var(--line);
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .swatch:hover { transform: scale(1.1); }
+        .swatch.active { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent); }
+
+        .swatch.custom {
+            background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+            overflow: hidden;
+        }
+
+        .swatch.custom input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* البشرة */
+        .skins { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+        .skin {
+            border: none;
+            background: none;
+            cursor: pointer;
+            text-align: center;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .skin i {
+            display: block;
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 6px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            box-shadow: inset 0 -6px 10px rgba(0, 0, 0, 0.18), 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s;
+        }
+
+        .skin:hover i { transform: translateY(-2px); }
+        .skin.active i { border-color: var(--accent); }
+        .skin.active { color: var(--text); font-weight: 700; }
+
+        /* رفع الصورة */
+        .drop {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 120px;
+            border: 2px dashed var(--line);
+            border-radius: 14px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+            padding: 12px;
+            transition: all 0.2s;
+        }
+
+        .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+        .drop span { font-size: 28px; }
+        .drop img { max-width: 100%; max-height: 110px; border-radius: 10px; }
+        .drop input { display: none; }
+
+        .range-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+        .range-row input { flex: 1; accent-color: var(--accent); }
+        .range-row output { min-width: 34px; text-align: center; color: var(--text); font-weight: 600; }
+
+        /* أزرار رئيسية */
+        .btn {
+            width: 100%;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            transition: transform 0.15s, box-shadow 0.15s, opacity 0.2s;
+        }
+
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; box-shadow: 0 6px 18px rgba(255, 107, 107, 0.3); }
+        .btn-ghost { background: var(--panel); border: 1px solid var(--line); }
+        .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 6px 0;
+        }
+
+        .switch {
+            position: relative;
+            width: 42px;
+            height: 24px;
+            border-radius: 99px;
+            background: var(--line);
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .switch::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform 0.2s;
+        }
+
+        .switch.on { background: var(--accent); }
+        .switch.on::after { transform: translateX(-18px); }
+
+        .footer {
+            padding: 12px 16px 16px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            gap: 8px;
+        }
+
+        /* ================= التنبيهات ================= */
+        #toasts {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(15, 16, 26, 0.92);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 99px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            animation: pop 0.25s ease;
+        }
+
+        .toast.warn { background: #e8890c; }
+        .toast.error { background: #e03131; }
+        .toast.out { opacity: 0; transform: translateY(8px); transition: all 0.3s; }
+
+        @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(0.96); } }
+
+        /* مبدّل المجسم */
+        .model-switch {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+        }
+
+        .model-btn {
+            border: none;
+            background: transparent;
+            padding: 7px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--muted);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .model-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+        .model-btn:disabled { cursor: wait; }
+
+        /* ================= الجوال ================= */
+        @media (max-width: 820px) {
+            .app { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+            #panel { order: 2; border-left: none; border-top: 1px solid var(--line); max-height: 48vh; max-height: 48dvh; border-radius: 20px 20px 0 0; }
+            #viewport { order: 1; }
+            .brand { padding: 12px 18px 8px; }
+            .brand h1 { font-size: 19px; }
+            .brand p { display: none; }
+            .model-btn { padding: 6px 10px; font-size: 12px; }
+            .hint { display: none; }
+            .toolbar.top { top: 10px; left: 10px; }
+            .toolbar.views { bottom: 10px; }
+            .toolbar.zoom { left: 10px; }
+            .tool.big { width: 40px; height: 40px; font-size: 22px; }
+            .tool { padding: 7px 9px; font-size: 12px; }
+            #toasts { bottom: 52vh; }
+            .footer { padding: 8px 16px 12px; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <!-- ================= اللوحة ================= -->
+        <aside id="panel">
+            <div class="brand">
+                <div>
+                    <h1>✨ أزياء أحمد</h1>
+                    <p>صمّم إطلالتك وشوفها ثلاثية الأبعاد</p>
+                </div>
+                <div class="model-switch" id="model-switch"></div>
+            </div>
+
+            <nav class="tabs">
+                <button class="tab active" data-tab="clothes"><span>👕</span>الملابس</button>
+                <button class="tab" data-tab="print"><span>🖼️</span>الطباعة</button>
+                <button class="tab" data-tab="skin"><span>🎨</span>البشرة</button>
+                <button class="tab" data-tab="scene"><span>💡</span>المشهد</button>
+            </nav>
+
+            <div class="pages">
+                <!-- الملابس -->
+                <section class="page active" data-page="clothes">
+                    <div class="card" data-group="top">
+                        <div class="card-title">الملابس العلوية</div>
+                        <div class="chips" data-role="pick"></div>
+                        <div class="label">اللون</div>
+                        <div class="swatches" data-role="color"></div>
+                        <div class="label">نوع القماش</div>
+                        <div class="chips" data-role="fabric"></div>
+                    </div>
+
+                    <div class="card" data-group="bottom">
+                        <div class="card-title">الملابس السفلية</div>
+                        <div class="chips" data-role="pick"></div>
+                        <div class="label">اللون</div>
+                        <div class="swatches" data-role="color"></div>
+                        <div class="label">نوع القماش</div>
+                        <div class="chips" data-role="fabric"></div>
+                    </div>
+                </section>
+
+                <!-- الطباعة -->
+                <section class="page" data-page="print">
+                    <div class="card">
+                        <div class="card-title">اطبع صورة على قطعة <small>PNG / JPG</small></div>
+                        <div class="chips" id="print-target"></div>
+
+                        <div class="label">الصورة</div>
+                        <label class="drop" id="drop">
+                            <input type="file" id="file" accept="image/*">
+                            <span>📁</span>
+                            <div id="drop-text">اضغط لاختيار صورة أو اسحبها هنا</div>
+                        </label>
+
+                        <div class="switch-row" style="margin-top: 10px;">
+                            <span>✂️ شيل خلفية الصورة <small style="color: var(--muted);">(لصور المنتجات)</small></span>
+                            <button class="switch on" id="sw-removebg" aria-label="شيل الخلفية"></button>
+                        </div>
+
+                        <div class="label">حجم النقشة</div>
+                        <div class="range-row">
+                            <button class="step-btn" id="print-bigger" title="كبّر النقشة">+</button>
+                            <input type="range" id="print-scale" min="0.5" max="6" step="0.1" value="1">
+                            <button class="step-btn" id="print-smaller" title="صغّر النقشة">−</button>
+                            <output id="print-scale-out">1×</output>
+                        </div>
+
+                        <div class="btn-row">
+                            <button class="btn btn-primary" id="apply-print">🎨 تطبيق</button>
+                        </div>
+                        <div class="btn-row">
+                            <button class="btn btn-ghost" id="rotate-print">↻ تدوير 90°</button>
+                            <button class="btn btn-ghost" id="remove-print">🗑️ إزالة</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- البشرة -->
+                <section class="page" data-page="skin">
+                    <div class="card">
+                        <div class="card-title">لون البشرة</div>
+                        <div class="skins" id="skins"></div>
+                        <div class="label">لون مخصص</div>
+                        <div class="swatches">
+                            <label class="swatch custom" title="لون مخصص"><input type="color" id="skin-custom" value="#e8d5b7"></label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- المشهد -->
+                <section class="page" data-page="scene">
+                    <div class="card">
+                        <div class="card-title">الإضاءة</div>
+                        <div class="chips" id="lights"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">الخلفية</div>
+                        <div class="swatches" id="backgrounds"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">خيارات</div>
+                        <div class="switch-row">دوران تلقائي <button class="switch" id="sw-rotate" aria-label="دوران تلقائي"></button></div>
+                        <div class="switch-row">الظل على الأرض <button class="switch on" id="sw-shadow" aria-label="الظل"></button></div>
+                        <div class="switch-row">الوضع الفاتح للوحة <button class="switch" id="sw-theme" aria-label="الوضع الفاتح"></button></div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="footer">
+                <button class="btn btn-primary" id="shot">📸 صوّر الإطلالة</button>
+                <button class="btn btn-ghost" id="reset" style="width: auto; padding: 12px 16px;" title="إعادة تعيين الكل">🔄</button>
+            </div>
+        </aside>
+
+        <!-- ================= المجسم ================= -->
+        <main id="viewport">
+            <div class="toolbar top">
+                <button class="tool icon" id="fullscreen" title="ملء الشاشة">⛶</button>
+                <button class="tool icon" id="cam-reset" title="إعادة الكاميرا (R)">🎯</button>
+            </div>
+
+            <div class="toolbar zoom">
+                <button class="tool big" id="zoom-in" title="تقريب (+)">+</button>
+                <button class="tool big" id="zoom-out" title="تبعيد (−)">−</button>
+            </div>
+
+            <div class="toolbar views" id="views">
+                <button class="tool active" data-view="front">أمام</button>
+                <button class="tool" data-view="side">جانب</button>
+                <button class="tool" data-view="back">خلف</button>
+                <button class="tool" data-view="close">قريب</button>
+            </div>
+
+            <div class="hint">اسحب للتدوير • عجلة الماوس للتقريب</div>
+
+            <div id="loader">
+                <div class="spinner"></div>
+                <div id="loader-text">جاري تحميل المجسم...</div>
+                <div class="progress"><div id="loader-bar"></div></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toasts"></div>
+
+    <!-- three.js بإصدار مثبّت -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+        // ======================================================
+        //  المجسمات وملابسها
+        //  لإضافة قطعة جديدة: سمّها في بلندر وأضفها هنا
+        // ======================================================
+        const MODELS = {
+            boy: {
+                label: 'أحمد', icon: '👦', url: './a7med.glb',
+                garments: {
+                    shirt:  { label: 'بلوزة',   emoji: '👕', group: 'top',    color: '#ffffff', fabric: 'cotton', match: n => n.includes('shirt') && !n.includes('sweat') },
+                    button: { label: 'قميص',    emoji: '👔', group: 'top',    color: '#4dabf7', fabric: 'cotton', match: n => n.includes('button') },
+                    pants:  { label: 'بنطلون',  emoji: '👖', group: 'bottom', color: '#2b4c7e', fabric: 'denim',  match: n => n.includes('pant') },
+                    shorts: { label: 'شورت',    emoji: '🩳', group: 'bottom', color: '#c9b79c', fabric: 'cotton', match: n => n.includes('short') },
+                },
+            },
+            girl: {
+                label: 'بنت', icon: '👧', url: './girl.glb',
+                garments: {
+                    tshirt:  { label: 'تيشيرت',   emoji: '👕', group: 'top',    color: '#ffffff', fabric: 'cotton', match: n => n === 'tshirt' },
+                    croptop: { label: 'كروب توب', emoji: '🎽', group: 'top',    color: '#ff8fa3', fabric: 'cotton', match: n => n === 'croptop' },
+                    jacket:  { label: 'قميص طويل', emoji: '👚', group: 'top',    color: '#cc5de8', fabric: 'silk',   match: n => n === 'jacket' },
+                    pants:   { label: 'بنطلون',   emoji: '👖', group: 'bottom', color: '#2b4c7e', fabric: 'denim',  match: n => n === 'pants' },
+                    shorts:  { label: 'شورت',     emoji: '🩳', group: 'bottom', color: '#c9b79c', fabric: 'denim',  match: n => n === 'shorts' },
+                    skirt:   { label: 'تنورة',    emoji: '👗', group: 'bottom', color: '#212529', fabric: 'cotton', match: n => n === 'skirt' },
+                },
+            },
+        };
+
+        const STORAGE_KEY = 'ahmed-fashion-v2';
+        const GROUP_LABEL = { top: 'قطعة علوية', bottom: 'قطعة سفلية' };
+
+        const COLORS = {
+            top:    ['#ffffff', '#212529', '#ff6b6b', '#ff8fa3', '#4dabf7', '#51cf66', '#ffd43b', '#cc5de8', '#c9a27e', '#1c3d5a'],
+            bottom: ['#2b4c7e', '#212529', '#c9b79c', '#6b705c', '#20c997', '#e8590c', '#5f3dc4', '#ff8fa3', '#ffffff', '#8d99ae'],
+        };
+
+        const FABRICS = {
+            cotton:  { label: 'قطن',  roughness: 0.85, sheen: 0.6, sheenRoughness: 0.8,  clearcoat: 0,   clearcoatRoughness: 0 },
+            silk:    { label: 'حرير', roughness: 0.32, sheen: 1,   sheenRoughness: 0.25, clearcoat: 0,   clearcoatRoughness: 0 },
+            denim:   { label: 'دنيم', roughness: 1,    sheen: 0.3, sheenRoughness: 1,    clearcoat: 0,   clearcoatRoughness: 0 },
+            leather: { label: 'جلد',  roughness: 0.45, sheen: 0,   sheenRoughness: 1,    clearcoat: 0.8, clearcoatRoughness: 0.3 },
+        };
+
+        const SKINS = [
+            ['#F5E6D3', 'فاتح جداً'], ['#E8D5B7', 'فاتح'], ['#D4A574', 'قمحي'], ['#C68642', 'أسمر فاتح'],
+            ['#A0652F', 'أسمر'], ['#7A4B1C', 'أسمر غامق'], ['#5C3A1A', 'داكن'], ['#3E2410', 'داكن جداً'],
+        ];
+
+        const LIGHTS = {
+            natural: { label: '🌞 طبيعي',   key: 0xffffff, rim: 0xaaccff, sky: 0xffffff, ground: 0x444455, exposure: 1.0 },
+            warm:    { label: '🔥 دافئ',    key: 0xffd2a1, rim: 0xff9a5c, sky: 0xffe6c7, ground: 0x553322, exposure: 1.05 },
+            cold:    { label: '❄️ بارد',    key: 0xd6e6ff, rim: 0x6fa8ff, sky: 0xcfe3ff, ground: 0x223355, exposure: 0.95 },
+            studio:  { label: '🎬 استوديو', key: 0xffffff, rim: 0xff8fa3, sky: 0xffffff, ground: 0x666666, exposure: 1.15 },
+        };
+
+        const BACKGROUNDS = {
+            studio: { label: 'استوديو', a: '#2a2d45', b: '#0c0d16' },
+            night:  { label: 'ليل',     a: '#1b3b6f', b: '#050814' },
+            sunset: { label: 'غروب',    a: '#ff9a8b', b: '#3b1d4a' },
+            mint:   { label: 'نعناع',   a: '#e3fff4', b: '#7fbfac' },
+            sand:   { label: 'رملي',    a: '#fff4e2', b: '#c9a27e' },
+            white:  { label: 'أبيض',    a: '#ffffff', b: '#d9dde8' },
+        };
+
+        const DEFAULT_STATE = {
+            model: 'boy',
+            skin: '#E8D5B7',
+            light: 'natural',
+            bg: 'studio',
+            autoRotate: false,
+            shadow: true,
+            theme: 'dark',
+            looks: {}, // { boy: { top, bottom, garments: { key: { color, fabric } } } }
+        };
+
+        // ======================================================
+        //  الحالة
+        // ======================================================
+        let state = loadState();
+        const loaded = {};          // model id -> { root, meshes, body, prints, fit }
+        let current = null;         // المجسم المعروض الحين
+        let pendingImage = null;
+        let printTarget = null;
+        let printScale = 1;
+
+        function loadState() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                if (saved) {
+                    const s = { ...structuredClone(DEFAULT_STATE), ...saved };
+                    if (!MODELS[s.model]) s.model = 'boy';
+                    return s;
+                }
+            } catch (e) { /* التخزين غير متاح */ }
+            return structuredClone(DEFAULT_STATE);
+        }
+
+        function saveState() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { }
+        }
+
+        const G = () => MODELS[state.model].garments;
+
+        function look() {
+            if (!state.looks[state.model]) state.looks[state.model] = { top: 'none', bottom: 'none', garments: {} };
+            return state.looks[state.model];
+        }
+
+        function garmentState(key) {
+            const l = look();
+            if (!l.garments[key]) l.garments[key] = { color: null, fabric: G()[key].fabric };
+            return l.garments[key];
+        }
+
+        // ======================================================
+        //  المشهد
+        // ======================================================
+        const viewport = document.getElementById('viewport');
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        viewport.prepend(renderer.domElement);
+
+        const scene = new THREE.Scene();
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        scene.environmentIntensity = 0.55;
+
+        const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 100);
+        camera.position.set(0, 1.2, 4);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.07;
+        controls.enablePan = false;
+        controls.autoRotateSpeed = 1.6;
+        controls.maxPolarAngle = Math.PI * 0.55;
+
+        const hemi = new THREE.HemisphereLight(0xffffff, 0x444455, 0.7);
+        scene.add(hemi);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(2048, 2048);
+        keyLight.shadow.bias = -0.0005;
+        keyLight.shadow.radius = 6;
+        scene.add(keyLight);
+
+        const rimLight = new THREE.DirectionalLight(0xaaccff, 1.4);
+        rimLight.position.set(-3, 2.5, -3);
+        scene.add(rimLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        fillLight.position.set(-3, 1.5, 2);
+        scene.add(fillLight);
+
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.3 }));
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        const ring = new THREE.Mesh(
+            new THREE.RingGeometry(0.98, 1, 96),
+            new THREE.MeshBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 0.002;
+        scene.add(ring);
+
+        // ======================================================
+        //  تحميل المجسمات
+        // ======================================================
+        const loaderEl = document.getElementById('loader');
+        const gltfLoader = new GLTFLoader();
+
+        function showLoader(text) {
+            loaderEl.innerHTML = `<div class="spinner"></div><div id="loader-text">${text}</div>
+                <div class="progress"><div id="loader-bar"></div></div>`;
+            loaderEl.classList.remove('hidden');
+        }
+
+        function loadModel(id) {
+            const M = MODELS[id];
+            showLoader(`جاري تحميل ${M.label}...`);
+
+            return new Promise((resolve, reject) => {
+                gltfLoader.load(M.url, (gltf) => {
+                    const rec = { root: gltf.scene, meshes: {}, body: null, prints: {}, fit: null };
+
+                    rec.root.traverse((child) => {
+                        if (!child.isMesh) return;
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        const name = child.name.toLowerCase();
+
+                        const key = Object.keys(M.garments).find(k => !rec.meshes[k] && M.garments[k].match(name));
+                        if (key) {
+                            child.material = new THREE.MeshPhysicalMaterial({ side: THREE.DoubleSide });
+                            child.visible = false;
+                            rec.meshes[key] = child;
+                        } else if (!rec.body) {
+                            rec.body = child;
+                            child.material = new THREE.MeshPhysicalMaterial({
+                                color: state.skin, roughness: 0.5,
+                                sheen: 0.25, sheenRoughness: 0.6, sheenColor: new THREE.Color(0xffe8dc),
+                            });
+                        } else {
+                            child.visible = false; // أي قطعة غير معروفة نخفيها
+                        }
+                    });
+
+                    rec.fit = fitModel(rec.root);
+                    loaded[id] = rec;
+                    resolve(rec);
+                }, (xhr) => {
+                    if (xhr.total) {
+                        const p = Math.round((xhr.loaded / xhr.total) * 100);
+                        document.getElementById('loader-bar').style.width = p + '%';
+                        document.getElementById('loader-text').textContent = `جاري تحميل ${M.label} ${p}%`;
+                    }
+                }, (error) => {
+                    console.error(error);
+                    const file = M.url.replace('./', '');
+                    loaderEl.innerHTML = `<div class="err">❌ ما قدرت أحمّل <b>${file}</b><br>
+                        تأكد إن الملف في نفس مجلد الصفحة،<br>وافتح الصفحة من سيرفر محلي (مثل Live Server) مو بدبل كلك.</div>`;
+                    reject(error);
+                });
+            });
+        }
+
+        // يحط المجسم على الأرض في النص ويحسب الكاميرا على حجمه
+        function fitModel(root) {
+            const box = new THREE.Box3().setFromObject(root);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+            root.position.x -= center.x;
+            root.position.z -= center.z;
+            root.position.y -= box.min.y;
+
+            const h = size.y;
+            const vFov = THREE.MathUtils.degToRad(camera.fov);
+            return {
+                height: h,
+                target: new THREE.Vector3(0, h * 0.52, 0),
+                dist: (h * 0.68) / Math.tan(vFov / 2),
+                radius: Math.max(size.x, size.z) * 0.75,
+            };
+        }
+
+        function applyFit(fit) {
+            const h = fit.height;
+            controls.minDistance = h * 0.35;
+            controls.maxDistance = fit.dist * 2.5;
+            ring.scale.setScalar(fit.radius);
+            keyLight.position.set(h * 0.7, h * 2.6, h * 1.4);
+            const s = keyLight.shadow.camera;
+            s.left = s.bottom = -h;
+            s.right = s.top = h;
+            s.near = 0.1;
+            s.far = h * 6;
+            s.updateProjectionMatrix();
+        }
+
+        let switching = false;
+        async function showModel(id) {
+            if (switching) return;
+            switching = true;
+            document.querySelectorAll('.model-btn').forEach(b => b.disabled = true);
+            const prev = state.model;
+            state.model = id;
+            try {
+                const rec = loaded[id] || await loadModel(id);
+                if (current) scene.remove(current.root);
+                current = rec;
+                scene.add(rec.root);
+                applyFit(rec.fit);
+                buildGarmentUI();
+                applyState();
+                setView('front', true);
+                loaderEl.classList.add('hidden');
+            } catch (e) {
+                if (current) {
+                    // نرجع للمجسم اللي كان معروض
+                    state.model = prev;
+                    setTimeout(() => loaderEl.classList.add('hidden'), 3500);
+                    toast(`ما قدرت أحمّل ${MODELS[id].label}`, 'error');
+                }
+            }
+            document.querySelectorAll('.model-btn').forEach(b => b.disabled = false);
+            syncUI();
+            switching = false;
+        }
+
+        // ======================================================
+        //  تطبيق الحالة على المجسم
+        // ======================================================
+        function applyState(save = true) {
+            if (current) {
+                const l = look();
+                Object.entries(current.meshes).forEach(([k, mesh]) => {
+                    mesh.visible = l[G()[k].group] === k;
+                    applyGarmentLook(k);
+                });
+                if (current.body) current.body.material.color.set(state.skin);
+            }
+            applyLight(state.light);
+            applyBackground(state.bg);
+            controls.autoRotate = state.autoRotate;
+            keyLight.castShadow = state.shadow;
+            ground.visible = state.shadow;
+            document.body.classList.toggle('light', state.theme === 'light');
+            syncUI();
+            if (save) saveState();
+        }
+
+        function applyGarmentLook(key) {
+            const mesh = current.meshes[key];
+            const gs = garmentState(key);
+            const mat = mesh.material;
+            const fabric = FABRICS[gs.fabric] || FABRICS.cotton;
+            const print = current.prints[key];
+
+            // إذا عليها طباعة نخلي اللون أبيض عشان الصورة تطلع بألوانها، إلا لو اختار المستخدم لون
+            mat.color.set(gs.color || (print ? '#ffffff' : G()[key].color));
+            mat.roughness = fabric.roughness;
+            mat.sheen = fabric.sheen;
+            mat.sheenRoughness = fabric.sheenRoughness;
+            mat.sheenColor.copy(mat.color).lerp(new THREE.Color(0xffffff), 0.5);
+            if (print) mat.sheenColor.multiplyScalar(0.25); // عشان النقشة ما تطلع باهتة
+            mat.clearcoat = fabric.clearcoat;
+            mat.clearcoatRoughness = fabric.clearcoatRoughness;
+            if (mat.map !== (print || null)) {
+                mat.map = print || null;
+                mat.needsUpdate = true;
+            }
+        }
+
+        function applyLight(name) {
+            const L = LIGHTS[name] || LIGHTS.natural;
+            keyLight.color.setHex(L.key);
+            rimLight.color.setHex(L.rim);
+            hemi.color.setHex(L.sky);
+            hemi.groundColor.setHex(L.ground);
+            renderer.toneMappingExposure = L.exposure;
+        }
+
+        function applyBackground(name) {
+            const B = BACKGROUNDS[name] || BACKGROUNDS.studio;
+            viewport.style.background = `radial-gradient(circle at 50% 35%, ${B.a}, ${B.b} 75%)`;
+            const light = isLightColor(B.b);
+            ground.material.opacity = light ? 0.18 : 0.35;
+            document.querySelector('.hint').style.color = light ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.55)';
+        }
+
+        function isLightColor(hex) {
+            const c = new THREE.Color(hex);
+            return (c.r * 0.299 + c.g * 0.587 + c.b * 0.114) > 0.55;
+        }
+
+        // ======================================================
+        //  واجهة المستخدم
+        // ======================================================
+        // مبدّل المجسم
+        const modelSwitch = document.getElementById('model-switch');
+        Object.entries(MODELS).forEach(([id, M]) => {
+            const b = document.createElement('button');
+            b.className = 'model-btn';
+            b.dataset.model = id;
+            b.textContent = `${M.icon} ${M.label}`;
+            b.addEventListener('click', () => { if (id !== state.model || !current) showModel(id); });
+            modelSwitch.appendChild(b);
+        });
+
+        // التبويبات
+        document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+            document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.dataset.page === tab.dataset.tab));
+        }));
+
+        function chip(value, text) {
+            const b = document.createElement('button');
+            b.className = 'chip';
+            b.dataset.value = value;
+            b.textContent = text;
+            return b;
+        }
+
+        // أزرار القطع تتغير حسب المجسم
+        function buildGarmentUI() {
+            document.querySelectorAll('[data-group]').forEach(card => {
+                const group = card.dataset.group;
+                const pick = card.querySelector('[data-role="pick"]');
+                pick.innerHTML = '';
+                const none = chip('none', 'بدون');
+                none.addEventListener('click', () => { look()[group] = 'none'; applyState(); toast('تم إخفاء القطعة'); });
+                pick.appendChild(none);
+
+                Object.entries(G()).filter(([, g]) => g.group === group).forEach(([k, g]) => {
+                    const b = chip(k, `${g.emoji} ${g.label}`);
+                    b.disabled = !current.meshes[k];
+                    b.addEventListener('click', () => { look()[group] = k; applyState(); toast(`تم اختيار ${g.label}`); });
+                    pick.appendChild(b);
+                });
+            });
+
+            const target = document.getElementById('print-target');
+            target.innerHTML = '';
+            const keys = Object.keys(G()).filter(k => current.meshes[k]);
+            if (!keys.includes(printTarget)) printTarget = keys[0];
+            keys.forEach(k => {
+                const b = chip(k, G()[k].label);
+                b.addEventListener('click', () => {
+                    printTarget = k;
+                    const t = current.prints[k];
+                    printScale = t ? t.repeat.x : 1;
+                    updateScaleUI();
+                    syncUI();
+                });
+                target.appendChild(b);
+            });
+        }
+
+        // الألوان والأقمشة (ثابتة لكل المجسمات)
+        document.querySelectorAll('[data-group]').forEach(card => {
+            const group = card.dataset.group;
+
+            const sw = card.querySelector('[data-role="color"]');
+            COLORS[group].forEach(c => {
+                const b = document.createElement('button');
+                b.className = 'swatch';
+                b.style.background = c;
+                b.dataset.color = c;
+                b.title = c;
+                b.addEventListener('click', () => setGarmentColor(group, c));
+                sw.appendChild(b);
+            });
+            const custom = document.createElement('label');
+            custom.className = 'swatch custom';
+            custom.title = 'لون مخصص';
+            custom.innerHTML = '<input type="color">';
+            custom.querySelector('input').addEventListener('input', e => setGarmentColor(group, e.target.value, true));
+            sw.appendChild(custom);
+
+            const fab = card.querySelector('[data-role="fabric"]');
+            Object.entries(FABRICS).forEach(([k, f]) => {
+                const b = chip(k, f.label);
+                b.addEventListener('click', () => {
+                    const key = look()[group];
+                    if (key === 'none') return toast(`اختر ${GROUP_LABEL[group]} أولاً`, 'warn');
+                    garmentState(key).fabric = k;
+                    applyState();
+                });
+                fab.appendChild(b);
+            });
+        });
+
+        function setGarmentColor(group, color, silent = false) {
+            const key = look()[group];
+            if (key === 'none') return toast(`اختر ${GROUP_LABEL[group]} أولاً`, 'warn');
+            garmentState(key).color = color;
+            applyState();
+            if (!silent) toast('🎨 تم تغيير اللون');
+        }
+
+        // البشرة
+        const skinsEl = document.getElementById('skins');
+        SKINS.forEach(([c, name]) => {
+            const b = document.createElement('button');
+            b.className = 'skin';
+            b.dataset.color = c;
+            b.innerHTML = `<i style="background:${c}"></i>${name}`;
+            b.addEventListener('click', () => { state.skin = c; applyState(); });
+            skinsEl.appendChild(b);
+        });
+        document.getElementById('skin-custom').addEventListener('input', e => { state.skin = e.target.value; applyState(); });
+
+        // الإضاءة والخلفية
+        const lightsEl = document.getElementById('lights');
+        Object.entries(LIGHTS).forEach(([k, L]) => {
+            const b = chip(k, L.label);
+            b.addEventListener('click', () => { state.light = k; applyState(); });
+            lightsEl.appendChild(b);
+        });
+
+        const bgsEl = document.getElementById('backgrounds');
+        Object.entries(BACKGROUNDS).forEach(([k, B]) => {
+            const b = document.createElement('button');
+            b.className = 'swatch';
+            b.dataset.value = k;
+            b.title = B.label;
+            b.style.background = `radial-gradient(circle at 50% 35%, ${B.a}, ${B.b})`;
+            b.addEventListener('click', () => { state.bg = k; applyState(); });
+            bgsEl.appendChild(b);
+        });
+
+        const switches = {
+            'sw-rotate': () => { state.autoRotate = !state.autoRotate; },
+            'sw-shadow': () => { state.shadow = !state.shadow; },
+            'sw-theme': () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; },
+        };
+        Object.entries(switches).forEach(([id, fn]) =>
+            document.getElementById(id).addEventListener('click', () => { fn(); applyState(); }));
+
+        function syncUI() {
+            document.querySelectorAll('.model-btn').forEach(b => b.classList.toggle('active', b.dataset.model === state.model));
+
+            if (current) {
+                const l = look();
+                document.querySelectorAll('[data-group]').forEach(card => {
+                    const group = card.dataset.group;
+                    const key = l[group];
+                    card.querySelectorAll('[data-role="pick"] .chip').forEach(b => b.classList.toggle('active', b.dataset.value === key));
+
+                    const gs = key !== 'none' && G()[key] ? garmentState(key) : null;
+                    const color = gs ? (gs.color || G()[key].color) : '';
+                    card.querySelectorAll('[data-role="color"] .swatch[data-color]').forEach(b =>
+                        b.classList.toggle('active', !!gs && b.dataset.color.toLowerCase() === color.toLowerCase()));
+                    card.querySelectorAll('[data-role="fabric"] .chip').forEach(b =>
+                        b.classList.toggle('active', !!gs && b.dataset.value === gs.fabric));
+                });
+                document.querySelectorAll('#print-target .chip').forEach(b => b.classList.toggle('active', b.dataset.value === printTarget));
+            }
+
+            document.querySelectorAll('#skins .skin').forEach(b => b.classList.toggle('active', b.dataset.color.toLowerCase() === state.skin.toLowerCase()));
+            document.querySelectorAll('#lights .chip').forEach(b => b.classList.toggle('active', b.dataset.value === state.light));
+            document.querySelectorAll('#backgrounds .swatch').forEach(b => b.classList.toggle('active', b.dataset.value === state.bg));
+            document.getElementById('sw-rotate').classList.toggle('on', state.autoRotate);
+            document.getElementById('sw-shadow').classList.toggle('on', state.shadow);
+            document.getElementById('sw-theme').classList.toggle('on', state.theme === 'light');
+        }
+
+        // ======================================================
+        //  الطباعة على الملابس
+        // ======================================================
+        const fileInput = document.getElementById('file');
+        const drop = document.getElementById('drop');
+        const dropText = document.getElementById('drop-text');
+
+        fileInput.addEventListener('change', e => readImage(e.target.files[0]));
+        ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+        ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+        drop.addEventListener('drop', e => readImage(e.dataTransfer.files[0]));
+
+        function readImage(file) {
+            if (!file || !file.type.startsWith('image/')) return toast('الملف لازم يكون صورة', 'warn');
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                const max = 2048;
+                const scale = Math.min(1, max / Math.max(img.width, img.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                pendingImage = canvas;
+                drop.querySelector('span').style.display = 'none';
+                dropText.innerHTML = `<img src="${url}" alt="">`;
+                toast('📸 تم اختيار الصورة، اضغط تطبيق');
+            };
+            img.onerror = () => toast('ما قدرت أقرأ الصورة', 'error');
+            img.src = url;
+        }
+
+        // ---------- إزالة خلفية صور المنتجات ----------
+        // يلقى الخلفية (اللون اللي في أطراف الصورة)، يقص الصورة على القطعة،
+        // ويعبّي مكان الخلفية بألوان القطعة نفسها عشان ما تطلع خطوط بيضاء على الملابس
+        let removeBg = true;
+        const swRemoveBg = document.getElementById('sw-removebg');
+        swRemoveBg.addEventListener('click', () => {
+            removeBg = !removeBg;
+            swRemoveBg.classList.toggle('on', removeBg);
+        });
+
+        function removeBackground(src) {
+            const W = src.width, H = src.height;
+            const full = src.getContext('2d').getImageData(0, 0, W, H).data;
+
+            // نسخة صغيرة للحسابات السريعة
+            const s = Math.min(1, 512 / Math.max(W, H));
+            const w = Math.max(1, Math.round(W * s)), h = Math.max(1, Math.round(H * s));
+            const sc = document.createElement('canvas');
+            sc.width = w; sc.height = h;
+            const sctx = sc.getContext('2d', { willReadFrequently: true });
+            sctx.drawImage(src, 0, 0, w, h);
+            const px = sctx.getImageData(0, 0, w, h).data;
+
+            // لون الخلفية = متوسط أطراف الصورة
+            const border = [];
+            for (let x = 0; x < w; x++) border.push(x, (h - 1) * w + x);
+            for (let y = 0; y < h; y++) border.push(y * w, y * w + w - 1);
+            let br = 0, bgc = 0, bb = 0, n = 0, transparent = 0;
+            border.forEach(i => {
+                if (px[i * 4 + 3] < 20) { transparent++; return; }
+                br += px[i * 4]; bgc += px[i * 4 + 1]; bb += px[i * 4 + 2]; n++;
+            });
+            if (n) { br /= n; bgc /= n; bb /= n; }
+            let spread = 0;
+            border.forEach(i => {
+                if (px[i * 4 + 3] < 20) return;
+                spread += Math.hypot(px[i * 4] - br, px[i * 4 + 1] - bgc, px[i * 4 + 2] - bb);
+            });
+            spread = n ? spread / n : 0;
+            // إذا الأطراف مو لون واحد (صورة عادية مو صورة منتج) نخليها زي ما هي
+            if (transparent < border.length * 0.5 && spread > 28) return null;
+
+            const TOL = 48;
+            const isBg = (d, i) => d[i * 4 + 3] < 20 ||
+                Math.hypot(d[i * 4] - br, d[i * 4 + 1] - bgc, d[i * 4 + 2] - bb) < TOL;
+
+            // نعبّي من الأطراف للداخل (عشان الأبيض اللي داخل القطعة نفسها ما ينشال)
+            const bg = new Uint8Array(w * h);
+            const stack = border.filter(i => isBg(px, i));
+            stack.forEach(i => bg[i] = 1);
+            while (stack.length) {
+                const i = stack.pop(), x = i % w, y = (i / w) | 0;
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = x + dx, ny = y + dy;
+                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                    const j = ny * w + nx;
+                    if (!bg[j] && isBg(px, j)) { bg[j] = 1; stack.push(j); }
+                }
+            }
+
+            // حدود القطعة
+            let x0 = w, y0 = h, x1 = -1, y1 = -1, fg = 0;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                if (bg[y * w + x]) continue;
+                fg++;
+                if (x < x0) x0 = x; if (x > x1) x1 = x;
+                if (y < y0) y0 = y; if (y > y1) y1 = y;
+            }
+            if (fg < w * h * 0.04) return null; // ما لقينا قطعة واضحة
+            // إذا "القطعة" واصلة لأطراف الصورة كلها فهذي نقشة مو صورة منتج، نخليها زي ما هي
+            if ((x1 - x0 + 1) > w * 0.94 && (y1 - y0 + 1) > h * 0.94) return null;
+
+            // نمد ألوان القطعة على مكان الخلفية (طبقة ورا طبقة)
+            const fill = new Float32Array(w * h * 3);
+            const known = new Uint8Array(w * h);
+            for (let i = 0; i < w * h; i++) if (!bg[i]) {
+                known[i] = 1;
+                fill[i * 3] = px[i * 4]; fill[i * 3 + 1] = px[i * 4 + 1]; fill[i * 3 + 2] = px[i * 4 + 2];
+            }
+            let frontier = true, guard = 0;
+            while (frontier && guard++ < 1200) {
+                frontier = false;
+                const add = [];
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                    const i = y * w + x;
+                    if (known[i]) continue;
+                    let r = 0, g = 0, b = 0, c = 0;
+                    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                        const nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                        const j = ny * w + nx;
+                        if (known[j]) { r += fill[j * 3]; g += fill[j * 3 + 1]; b += fill[j * 3 + 2]; c++; }
+                    }
+                    if (c) add.push(i, r / c, g / c, b / c);
+                }
+                for (let k = 0; k < add.length; k += 4) {
+                    const i = add[k];
+                    known[i] = 1; fill[i * 3] = add[k + 1]; fill[i * 3 + 1] = add[k + 2]; fill[i * 3 + 2] = add[k + 3];
+                    frontier = true;
+                }
+            }
+
+            const fc = document.createElement('canvas');
+            fc.width = w; fc.height = h;
+            const fctx = fc.getContext('2d');
+            const fdata = fctx.createImageData(w, h);
+            for (let i = 0; i < w * h; i++) {
+                fdata.data[i * 4] = fill[i * 3]; fdata.data[i * 4 + 1] = fill[i * 3 + 1];
+                fdata.data[i * 4 + 2] = fill[i * 3 + 2]; fdata.data[i * 4 + 3] = 255;
+            }
+            fctx.putImageData(fdata, 0, 0);
+
+            // الصورة الكاملة بدقتها: الخلفية شفافة فوق الألوان الممدودة، ومقصوصة على القطعة
+            const cx0 = Math.floor(x0 / s), cy0 = Math.floor(y0 / s);
+            const cw = Math.min(W - cx0, Math.ceil((x1 + 1) / s) - cx0), ch = Math.min(H - cy0, Math.ceil((y1 + 1) / s) - cy0);
+            const top = document.createElement('canvas');
+            top.width = W; top.height = H;
+            const tctx = top.getContext('2d');
+            const tdata = tctx.createImageData(W, H);
+            for (let y = 0; y < H; y++) {
+                const sy = Math.min(h - 1, (y * s) | 0);
+                for (let x = 0; x < W; x++) {
+                    const i = y * W + x, si = sy * w + Math.min(w - 1, (x * s) | 0);
+                    const o = i * 4;
+                    tdata.data[o] = full[o]; tdata.data[o + 1] = full[o + 1]; tdata.data[o + 2] = full[o + 2];
+                    tdata.data[o + 3] = (bg[si] && isBg(full, i)) ? 0 : full[o + 3];
+                }
+            }
+            tctx.putImageData(tdata, 0, 0);
+
+            const out = document.createElement('canvas');
+            out.width = cw; out.height = ch;
+            const octx = out.getContext('2d');
+            octx.imageSmoothingQuality = 'high';
+            octx.filter = 'blur(2px)';
+            octx.drawImage(fc, x0, y0, x1 - x0 + 1, y1 - y0 + 1, 0, 0, cw, ch);
+            octx.filter = 'none';
+            octx.drawImage(top, cx0, cy0, cw, ch, 0, 0, cw, ch);
+            return out;
+        }
+
+        document.getElementById('apply-print').addEventListener('click', () => {
+            if (!current) return;
+            if (!pendingImage) return toast('📁 اختر صورة أولاً', 'warn');
+            if (!current.meshes[printTarget]) return toast('القطعة غير موجودة في المجسم', 'warn');
+
+            current.prints[printTarget]?.dispose();
+
+            let image = pendingImage;
+            if (removeBg) {
+                const cleaned = removeBackground(pendingImage);
+                if (cleaned) image = cleaned;
+            }
+
+            const tex = new THREE.CanvasTexture(image);
+            tex.flipY = false;                       // مجسمات glTF تحتاج هذا وإلا تنقلب الصورة
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.center.set(0.5, 0.5);
+            tex.repeat.set(printScale, printScale);
+            tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            current.prints[printTarget] = tex;
+
+            garmentState(printTarget).color = null;
+            look()[G()[printTarget].group] = printTarget;
+            applyState();
+            toast(`✅ تم طباعة الصورة على ${G()[printTarget].label}`);
+        });
+
+        document.getElementById('rotate-print').addEventListener('click', () => {
+            const t = current?.prints[printTarget];
+            if (!t) return toast('طبّق صورة على القطعة أولاً', 'warn');
+            t.rotation = (t.rotation + Math.PI / 2) % (Math.PI * 2);
+        });
+
+        document.getElementById('remove-print').addEventListener('click', () => {
+            const t = current?.prints[printTarget];
+            if (!t) return toast('ما فيه طباعة على هذي القطعة', 'warn');
+            t.dispose();
+            delete current.prints[printTarget];
+            applyState();
+            toast('🗑️ تم إزالة الطباعة');
+        });
+
+        const scaleInput = document.getElementById('print-scale');
+        const scaleOut = document.getElementById('print-scale-out');
+        scaleInput.addEventListener('input', () => {
+            printScale = parseFloat(scaleInput.value);
+            const t = current?.prints[printTarget];
+            if (t) t.repeat.set(printScale, printScale);
+            updateScaleUI();
+        });
+
+        // أزرار + و − لحجم النقشة (+ يكبّر النقشة = تكرار أقل)
+        function stepPrintScale(delta) {
+            printScale = Math.round(Math.min(6, Math.max(0.5, printScale + delta)) * 100) / 100;
+            const t = current?.prints[printTarget];
+            if (t) t.repeat.set(printScale, printScale);
+            updateScaleUI();
+        }
+        document.getElementById('print-bigger').addEventListener('click', () => stepPrintScale(-0.25));
+        document.getElementById('print-smaller').addEventListener('click', () => stepPrintScale(0.25));
+
+        function updateScaleUI() {
+            scaleInput.value = printScale;
+            scaleOut.textContent = (+printScale.toFixed(2)) + '×';
+        }
+
+        // ======================================================
+        //  الكاميرا
+        // ======================================================
+        let tween = null;
+
+        function setView(view, instant = false) {
+            if (!current) return;
+            const { dist: d, height: h, target: t } = current.fit;
+            const views = {
+                front: [new THREE.Vector3(0, t.y + h * 0.05, d), t.clone()],
+                side:  [new THREE.Vector3(d, t.y + h * 0.05, 0), t.clone()],
+                back:  [new THREE.Vector3(0, t.y + h * 0.05, -d), t.clone()],
+                close: [new THREE.Vector3(0, h * 0.72, d * 0.6), new THREE.Vector3(0, h * 0.7, 0)],
+            };
+            const [pos, target] = views[view] || views.front;
+
+            document.querySelectorAll('#views .tool').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+
+            if (instant) {
+                tween = null;
+                camera.position.copy(pos);
+                controls.target.copy(target);
+                controls.update();
+                return;
+            }
+            tween = { fromPos: camera.position.clone(), toPos: pos, fromTarget: controls.target.clone(), toTarget: target, t: 0 };
+        }
+
+        document.querySelectorAll('#views .tool').forEach(b => b.addEventListener('click', () => setView(b.dataset.view)));
+        document.getElementById('cam-reset').addEventListener('click', () => setView('front'));
+
+        // التقريب والتبعيد بالأزرار
+        function zoom(factor) {
+            const dir = camera.position.clone().sub(controls.target);
+            const d = THREE.MathUtils.clamp(dir.length() * factor, controls.minDistance, controls.maxDistance);
+            tween = {
+                fromPos: camera.position.clone(), toPos: controls.target.clone().add(dir.setLength(d)),
+                fromTarget: controls.target.clone(), toTarget: controls.target.clone(),
+                t: 0, dur: 0.3,
+            };
+        }
+        document.getElementById('zoom-in').addEventListener('click', () => zoom(0.8));
+        document.getElementById('zoom-out').addEventListener('click', () => zoom(1.25));
+        controls.addEventListener('start', () => {
+            tween = null;
+            document.querySelectorAll('#views .tool').forEach(b => b.classList.remove('active'));
+        });
+
+        // ======================================================
+        //  أدوات
+        // ======================================================
+        document.getElementById('fullscreen').addEventListener('click', () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+            else document.exitFullscreen();
+        });
+
+        document.getElementById('shot').addEventListener('click', takeScreenshot);
+
+        function takeScreenshot() {
+            renderer.render(scene, camera);
+            const src = renderer.domElement;
+            const out = document.createElement('canvas');
+            out.width = src.width;
+            out.height = src.height;
+            const ctx = out.getContext('2d');
+
+            const B = BACKGROUNDS[state.bg] || BACKGROUNDS.studio;
+            const cx = out.width / 2, cy = out.height * 0.35;
+            const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.hypot(out.width, out.height) * 0.56);
+            g.addColorStop(0, B.a);
+            g.addColorStop(1, B.b);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, out.width, out.height);
+            ctx.drawImage(src, 0, 0);
+
+            ctx.font = `700 ${Math.round(out.height * 0.03)}px Cairo, sans-serif`;
+            ctx.fillStyle = isLightColor(B.b) ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.45)';
+            ctx.textAlign = 'right';
+            ctx.fillText('أزياء أحمد ✨', out.width - out.height * 0.03, out.height * 0.96);
+
+            const link = document.createElement('a');
+            link.download = `ahmed-fashion-${state.model}-${Date.now()}.png`;
+            link.href = out.toDataURL('image/png');
+            link.click();
+            toast('📸 تم حفظ الصورة');
+        }
+
+        document.getElementById('reset').addEventListener('click', () => {
+            if (!current) return;
+            Object.values(current.prints).forEach(t => t.dispose());
+            current.prints = {};
+            state.looks[state.model] = { top: 'none', bottom: 'none', garments: {} };
+            state.skin = DEFAULT_STATE.skin;
+            state.light = DEFAULT_STATE.light;
+            state.bg = DEFAULT_STATE.bg;
+            state.autoRotate = false;
+            state.shadow = true;
+            applyState();
+            setView('front');
+            toast('🔄 تم إعادة تعيين الكل');
+        });
+
+        window.addEventListener('keydown', e => {
+            if (e.target.matches('input, textarea, select')) return;
+            const k = e.key.toLowerCase();
+            if (k === 'r') setView('front');
+            else if (k === '+' || k === '=') zoom(0.8);
+            else if (k === '-' || k === '_') zoom(1.25);
+            else if (k === 'a') { state.autoRotate = !state.autoRotate; applyState(); }
+            else if (k === 'p') takeScreenshot();
+            else if (k === 'm') showModel(state.model === 'boy' ? 'girl' : 'boy');
+            else if (['1', '2', '3', '4'].includes(k)) setView(['front', 'side', 'back', 'close'][+k - 1]);
+        });
+
+        // ======================================================
+        //  التنبيهات
+        // ======================================================
+        const toastsEl = document.getElementById('toasts');
+        function toast(msg, type = '') {
+            const el = document.createElement('div');
+            el.className = 'toast ' + type;
+            el.textContent = msg;
+            toastsEl.appendChild(el);
+            while (toastsEl.children.length > 3) toastsEl.firstChild.remove();
+            setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 2000);
+        }
+
+        // ======================================================
+        //  الحلقة والحجم
+        // ======================================================
+        function resize() {
+            const w = viewport.clientWidth, h = viewport.clientHeight;
+            if (!w || !h) return;
+            renderer.setSize(w, h, false);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+        new ResizeObserver(resize).observe(viewport);
+        resize();
+
+        const clock = new THREE.Clock();
+        const ease = t => 1 - Math.pow(1 - t, 3);
+
+        renderer.setAnimationLoop(() => {
+            const dt = clock.getDelta();
+            if (tween) {
+                tween.t = Math.min(1, tween.t + dt / (tween.dur || 0.8));
+                const k = ease(tween.t);
+                camera.position.lerpVectors(tween.fromPos, tween.toPos, k);
+                controls.target.lerpVectors(tween.fromTarget, tween.toTarget, k);
+                if (tween.t >= 1) tween = null;
+            }
+            controls.update(dt);
+            renderer.render(scene, camera);
+        });
+
+        // البداية
+        applyBackground(state.bg);
+        document.body.classList.toggle('light', state.theme === 'light');
+        syncUI();
+        showModel(state.model).then(() => current && toast(`✅ ${MODELS[state.model].label} جاهز`));
+    </script>
+</body>
+
+</html>
